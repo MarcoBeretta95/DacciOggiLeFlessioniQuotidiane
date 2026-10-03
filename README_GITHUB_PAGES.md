@@ -38,8 +38,8 @@ Dopo la pubblicazione, GitHub mostrerà l'indirizzo del sito.
 ## 5. Funzioni disponibili
 
 - Flessioni, squat, lunges, pull up/chin up, plank, crunches e leg raises.
-- Obiettivi giornalieri per persona modificabili nella scheda “Persone & obiettivi”.
-- Target mensili calcolati automaticamente come obiettivo giornaliero × partecipanti × giorni del mese.
+- Obiettivi giornalieri predefiniti e obiettivi personalizzabili per ogni persona nella scheda “Persone & obiettivi”; i target mensili e settimanali si aggiornano in base agli obiettivi correnti.
+- Target mensili calcolati automaticamente come somma degli obiettivi giornalieri individuali × giorni del mese.
 - Il plank viene registrato e conteggiato in minuti; gli altri esercizi in ripetizioni.
 - Inserimento attività con data scelta manualmente, anche retroattiva.
 - Storico condiviso.

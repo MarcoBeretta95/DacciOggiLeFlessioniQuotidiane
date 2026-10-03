@@ -121,7 +121,7 @@ function render(){
  $("pt").innerHTML=`<table><tr><th>Persona</th><th></th></tr>${S.people.map(p=>`<tr><td>${esc(p.name)}</td><td class="r">${canWrite?`<button class="sec" onclick="delPerson('${p.id}')">Rimuovi</button>`:""}</td></tr>`).join("")}</table>`;
  if(!$("goals-form").contains(document.activeElement)){const ids={pushups:"gp",squats:"gs",lunges:"gl",pullups:"gu",plank:"gpl",crunches:"gc",legraises:"glr"};K.forEach(e=>$(ids[e]).value=S.dailyGoals[e])}
  if(!$("person-goals").contains(document.activeElement))renderPersonGoals();
- $("goal-summary").textContent=`${S.people.length} ${S.people.length===1?"persona":"persone"} × ${monthDays()} giorni (${new Date(y,m-1,1).toLocaleDateString("it-IT",{month:"long"})})`;
+ $("goal-summary").textContent=`${S.people.length} ${S.people.length===1?"persona":"persone"} · obiettivi giornalieri personalizzati × ${monthDays()} giorni (${new Date(y,m-1,1).toLocaleDateString("it-IT",{month:"long"})})`;
  $("goal-preview").innerHTML=K.map(e=>`<div>${EX[e]}: ${quantity(e,groupTarget(e))}</div>`).join("");
  $("ht").innerHTML=`<table><tr><th>Data</th><th>Persona</th><th>Esercizio</th><th class="r">Quantità</th></tr>${S.logs.map(l=>`<tr><td>${new Date(l.date+"T12:00:00").toLocaleDateString("it-IT")}</td><td>${nm(l.personId)}</td><td>${EX[l.exercise]}</td><td class="r">${quantity(l.exercise,l.reps)}</td></tr>`).join("")||"<tr><td colspan='4'>Nessun dato</td></tr>"}</table>`;
 }
