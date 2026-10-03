@@ -21,7 +21,8 @@ form{display:grid;grid-template-columns:repeat(4,1fr) auto;gap:10px;align-items:
 input,select{width:100%;padding:10px;border:1px solid var(--line);border-radius:10px;background:var(--card);color:var(--fg)}
 .scroll{overflow-x:auto}table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:9px;border-bottom:1px solid var(--line);font-size:14px}.r{text-align:right}
 .note{padding:10px 12px;border-radius:10px;background:var(--soft);font-size:13px;margin:8px 0}.mn{display:flex;align-items:center;gap:10px;margin-bottom:12px}.mn h2{margin:0;flex:1}
-@media(max-width:760px){.grid,.stats{grid-template-columns:1fr}form{grid-template-columns:1fr 1fr}.wrap{padding:14px}}
+.goal-form{grid-template-columns:repeat(4,minmax(0,1fr))}.person-form{grid-template-columns:minmax(0,1fr) auto}
+@media(max-width:760px){.grid,.stats{grid-template-columns:1fr}form{grid-template-columns:1fr 1fr}.goal-form{grid-template-columns:repeat(2,minmax(0,1fr))}.person-form{grid-template-columns:1fr auto}.wrap{padding:14px}}
 </style>
 </head>
 <body>
@@ -42,25 +43,27 @@ input,select{width:100%;padding:10px;border:1px solid var(--line);border-radius:
 <div class="card"><h2>Registra un allenamento</h2>
 <form onsubmit="addLog(event)">
 <div><label>Persona</label><select id="lp"></select></div>
-<div><label>Esercizio</label><select id="le"><option value="pushups">Piegamenti</option><option value="squats">Squat</option><option value="pullups">Trazioni</option></select></div>
-<div><label>Ripetizioni</label><input id="lr" type="number" min="1" required></div>
+<div><label>Esercizio</label><select id="le"><option value="pushups">Flessioni</option><option value="squats">Squat</option><option value="lunges">Lunges</option><option value="pullups">Pull up / Chin up</option><option value="plank">Plank</option><option value="crunches">Crunches</option><option value="legraises">Leg raises</option></select></div>
+<div><label id="lr-label">Ripetizioni</label><input id="lr" type="number" min="1" step="1" required></div>
 <div><label>Data</label><input id="ld" type="date" required></div>
 <button>+ Aggiungi</button></form></div>
 <div class="card"><h2>Ultimi inserimenti</h2><div id="ll"></div></div>
 </section>
 
 <section id="ppl" style="display:none">
-<div class="card"><h2>Aggiungi persona</h2><form onsubmit="addPerson(event)">
+<div class="card"><h2>Aggiungi persona</h2><form class="person-form" onsubmit="addPerson(event)">
 <div><label>Nome</label><input id="pn" required placeholder="es. Luca"></div>
-<div><label>Piegamenti / mese</label><input id="pp" type="number" min="0" value="0"></div>
-<div><label>Squat / mese</label><input id="ps" type="number" min="0" value="0"></div>
-<div><label>Trazioni / mese</label><input id="pu" type="number" min="0" value="0"></div>
 <button>+ Aggiungi</button></form></div>
-<div class="card"><h2>Obiettivi del gruppo (mensili)</h2><form onsubmit="saveGoals(event)">
-<div><label>Piegamenti</label><input id="gp" type="number" min="0"></div>
-<div><label>Squat</label><input id="gs2" type="number" min="0"></div>
-<div><label>Trazioni</label><input id="gu" type="number" min="0"></div><div></div>
+<div class="card"><h2>Obiettivi giornalieri per persona</h2><form id="goals-form" class="goal-form" onsubmit="saveGoals(event)">
+<div><label>Flessioni / giorno / persona</label><input id="gp" type="number" min="0" step="1"></div>
+<div><label>Squat / giorno / persona</label><input id="gs" type="number" min="0" step="1"></div>
+<div><label>Lunges / giorno / persona</label><input id="gl" type="number" min="0" step="1"></div>
+<div><label>Pull up / Chin up / giorno / persona</label><input id="gu" type="number" min="0" step="1"></div>
+<div><label>Plank (minuti) / giorno / persona</label><input id="gpl" type="number" min="0" step="0.1"></div>
+<div><label>Crunches / giorno / persona</label><input id="gc" type="number" min="0" step="1"></div>
+<div><label>Leg raises / giorno / persona</label><input id="glr" type="number" min="0" step="1"></div>
 <button>Salva</button></form></div>
+<div class="card"><h2>Obiettivo mensile calcolato</h2><div class="muted" id="goal-summary"></div><div id="goal-preview"></div></div>
 <div class="card"><h2>Partecipanti</h2><div class="scroll" id="pt"></div></div>
 </section>
 
@@ -80,34 +83,40 @@ const firebaseConfig={
 };
 firebase.initializeApp(firebaseConfig);
 const db=firebase.firestore();
-const EX={pushups:"Piegamenti",squats:"Squat",pullups:"Trazioni"},K=Object.keys(EX);
+const EX={pushups:"Flessioni",squats:"Squat",lunges:"Lunges",pullups:"Pull up / Chin up",plank:"Plank",crunches:"Crunches",legraises:"Leg raises"},K=Object.keys(EX);
+const DEFAULT_DAILY_GOALS={pushups:30,squats:20,lunges:20,pullups:3,plank:1,crunches:15,legraises:10};
 const $=id=>document.getElementById(id);
 const ds=d=>d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
-const S={goals:{pushups:1000,squats:5000,pullups:100},people:[],logs:[]};
+const S={dailyGoals:{...DEFAULT_DAILY_GOALS},people:[],logs:[]};
 const today=new Date();let vm=ds(today).slice(0,7),canWrite=true;
 const n=x=>(+x||0).toLocaleString("it-IT"),pct=(a,b)=>b?Math.min(100,a/b*100):0;
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const quantity=(e,v)=>n(v)+(e==="plank"?" min":"");
+const monthDays=()=>{const[y,m]=vm.split("-").map(Number);return new Date(y,m,0).getDate()};
+const groupTarget=e=>(+S.dailyGoals[e]||0)*S.people.length*monthDays();
 function note(t){const m=$("msg");m.textContent=t;m.style.display=t?"block":"none"}
 function shift(k){const[y,m]=vm.split("-").map(Number),d=new Date(y,m-1+k,1);vm=ds(d).slice(0,7);render()}
 const inM=()=>S.logs.filter(l=>l.date.slice(0,7)===vm);
 const tot=(e,pid)=>inM().filter(l=>l.exercise===e&&(!pid||l.personId===pid)).reduce((a,l)=>a+l.reps,0);
 function weekRange(){const d=new Date(today.getFullYear(),today.getMonth(),today.getDate()),w=(d.getDay()+6)%7;const a=new Date(d);a.setDate(d.getDate()-w);const b=new Date(a);b.setDate(a.getDate()+6);return[ds(a),ds(b)]}
 function wtot(e,pid){const[a,b]=weekRange();return S.logs.filter(l=>l.exercise===e&&l.date>=a&&l.date<=b&&(!pid||l.personId===pid)).reduce((x,l)=>x+l.reps,0)}
-function wtarget(goal){const[y,m]=vm.split("-").map(Number),days=new Date(y,m,0).getDate();return Math.ceil(goal*7/days)}
-function row(label,v,g,extra){const p=pct(v,g);return `<div class="muted">${label}</div><div><b>${n(v)}</b> / ${n(g)}</div><div class="bar"><div class="fill ${p>=100?"done":""}" style="width:${p}%"></div></div>${extra||""}`}
+function wtarget(dailyGoal){return Math.ceil(dailyGoal*7)}
+function row(e,v,g,extra){const p=pct(v,g);return `<div class="muted">${EX[e]}</div><div><b>${quantity(e,v)}</b> / ${quantity(e,g)}</div><div class="bar"><div class="fill ${p>=100?"done":""}" style="width:${p}%"></div></div>${extra||""}`}
 function render(){
  const[y,m]=vm.split("-").map(Number);
  $("mt").textContent="Obiettivi di "+new Date(y,m-1,1).toLocaleDateString("it-IT",{month:"long",year:"numeric"});
- $("gs").innerHTML=K.map(e=>{const t=tot(e),g=S.goals[e];return `<div class="ex"><h3>${EX[e]}</h3><div class="big">${n(t)} / ${n(g)}</div><div class="bar"><div class="fill ${t>=g?"done":""}" style="width:${pct(t,g)}%"></div></div><div class="muted">${pct(t,g).toFixed(0)}% · ${t>=g?"obiettivo raggiunto 🎉":n(g-t)+" mancanti"}</div></div>`}).join("");
+ $("gs").innerHTML=K.map(e=>{const t=tot(e),g=groupTarget(e);return `<div class="ex"><h3>${EX[e]}</h3><div class="big">${quantity(e,t)} / ${quantity(e,g)}</div><div class="bar"><div class="fill ${t>=g&&g>0?"done":""}" style="width:${pct(t,g)}%"></div></div><div class="muted">${pct(t,g).toFixed(0)}% · ${g>0&&t>=g?"obiettivo raggiunto 🎉":quantity(e,g-t)+" mancanti"}</div></div>`}).join("");
  const cur=vm===ds(today).slice(0,7);$("wkc").style.display=cur?"block":"none";
- if(cur)$("ws").innerHTML=K.map(e=>{const t=wtot(e),g=wtarget(S.goals[e]);return `<div class="ex"><h3>${EX[e]}</h3><div class="big">${n(t)} / ${n(g)}</div><div class="bar"><div class="fill ${t>=g?"done":""}" style="width:${pct(t,g)}%"></div></div><div class="muted">target settimanale di gruppo</div></div>`}).join("");
- $("pc").innerHTML=S.people.map(p=>`<div class="ex"><h3>${esc(p.name)}</h3>${K.map(e=>row(EX[e],tot(e,p.id),p.goals[e]||0,cur&&p.goals[e]?`<div class="muted">settimana: ${n(wtot(e,p.id))} / ${n(wtarget(p.goals[e]))}</div>`:"")).join("")}</div>`).join("")||'<div class="muted">Aggiungi i partecipanti nella scheda "Persone &amp; obiettivi".</div>';
+ if(cur)$("ws").innerHTML=K.map(e=>{const t=wtot(e),g=wtarget((+S.dailyGoals[e]||0)*S.people.length);return `<div class="ex"><h3>${EX[e]}</h3><div class="big">${quantity(e,t)} / ${quantity(e,g)}</div><div class="bar"><div class="fill ${t>=g&&g>0?"done":""}" style="width:${pct(t,g)}%"></div></div><div class="muted">target settimanale di gruppo</div></div>`}).join("");
+ $("pc").innerHTML=S.people.map(p=>`<div class="ex"><h3>${esc(p.name)}</h3>${K.map(e=>{const daily=+S.dailyGoals[e]||0;return row(e,tot(e,p.id),daily*monthDays(),cur&&daily?`<div class="muted">settimana: ${quantity(e,wtot(e,p.id))} / ${quantity(e,wtarget(daily))}</div>`:"")}).join("")}</div>`).join("")||'<div class="muted">Aggiungi i partecipanti nella scheda "Persone &amp; obiettivi".</div>';
  const sel=$("lp").value;$("lp").innerHTML=S.people.map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join("");if(sel)$("lp").value=sel;
  const nm=id=>esc(S.people.find(p=>p.id===id)?.name||"Rimosso");
  const rm=l=>canWrite?`<button class="sec" onclick="delLog('${l.id}')">✕</button>`:"";
- $("ll").innerHTML=S.logs.slice(0,20).map(l=>`<div class="note"><b>${nm(l.personId)}</b> · ${EX[l.exercise]} · <b>${l.reps}</b> · ${new Date(l.date+"T12:00:00").toLocaleDateString("it-IT")} ${rm(l)}</div>`).join("")||'<div class="muted">Nessun inserimento.</div>';
- $("pt").innerHTML=`<table><tr><th>Persona</th><th>Piegamenti</th><th>Squat</th><th>Trazioni</th><th></th></tr>${S.people.map(p=>`<tr><td>${esc(p.name)}</td><td>${n(p.goals.pushups)}</td><td>${n(p.goals.squats)}</td><td>${n(p.goals.pullups)}</td><td class="r">${canWrite?`<button class="sec" onclick="delPerson('${p.id}')">Rimuovi</button>`:""}</td></tr>`).join("")}</table>`;
- if(document.activeElement.tagName!=="INPUT"){$("gp").value=S.goals.pushups;$("gs2").value=S.goals.squats;$("gu").value=S.goals.pullups}
+ $("ll").innerHTML=S.logs.slice(0,20).map(l=>`<div class="note"><b>${nm(l.personId)}</b> · ${EX[l.exercise]} · <b>${quantity(l.exercise,l.reps)}</b> · ${new Date(l.date+"T12:00:00").toLocaleDateString("it-IT")} ${rm(l)}</div>`).join("")||'<div class="muted">Nessun inserimento.</div>';
+ $("pt").innerHTML=`<table><tr><th>Persona</th><th></th></tr>${S.people.map(p=>`<tr><td>${esc(p.name)}</td><td class="r">${canWrite?`<button class="sec" onclick="delPerson('${p.id}')">Rimuovi</button>`:""}</td></tr>`).join("")}</table>`;
+ if(!$("goals-form").contains(document.activeElement)){const ids={pushups:"gp",squats:"gs",lunges:"gl",pullups:"gu",plank:"gpl",crunches:"gc",legraises:"glr"};K.forEach(e=>$(ids[e]).value=S.dailyGoals[e])}
+ $("goal-summary").textContent=`${S.people.length} ${S.people.length===1?"persona":"persone"} × ${monthDays()} giorni (${new Date(y,m-1,1).toLocaleDateString("it-IT",{month:"long"})})`;
+ $("goal-preview").innerHTML=K.map(e=>`<div>${EX[e]}: ${quantity(e,groupTarget(e))}</div>`).join("");
  $("ht").innerHTML=`<table><tr><th>Data</th><th>Persona</th><th>Esercizio</th><th class="r">Rip.</th></tr>${S.logs.map(l=>`<tr><td>${new Date(l.date+"T12:00:00").toLocaleDateString("it-IT")}</td><td>${nm(l.personId)}</td><td>${EX[l.exercise]}</td><td class="r">${l.reps}</td></tr>`).join("")||"<tr><td colspan='4'>Nessun dato</td></tr>"}</table>`;
 }
 async function w(fn){if(!db){note("Database non disponibile.");return}
@@ -115,14 +124,15 @@ async function w(fn){if(!db){note("Database non disponibile.");return}
 function addLog(ev){ev.preventDefault();if(!$("lp").value){note("Aggiungi prima almeno una persona.");return}
  w(async()=>{await db.collection("logs").add({personId:$("lp").value,exercise:$("le").value,reps:+$("lr").value,date:$("ld").value,ts:Date.now()});$("lr").value=""})}
 function delLog(id){w(()=>db.doc("logs/"+id).delete())}
-function addPerson(ev){ev.preventDefault();w(async()=>{await db.collection("people").add({name:$("pn").value.trim(),goals:{pushups:+$("pp").value,squats:+$("ps").value,pullups:+$("pu").value},ts:Date.now()});$("pn").value=""})}
+function addPerson(ev){ev.preventDefault();w(async()=>{await db.collection("people").add({name:$("pn").value.trim(),ts:Date.now()});$("pn").value=""})}
 function delPerson(id){if(confirm("Rimuovere questa persona? Gli inserimenti restano nello storico."))w(()=>db.doc("people/"+id).delete())}
-function saveGoals(ev){ev.preventDefault();w(()=>db.doc("config/goals").set({pushups:+$("gp").value,squats:+$("gs2").value,pullups:+$("gu").value}))}
+function saveGoals(ev){ev.preventDefault();const ids={pushups:"gp",squats:"gs",lunges:"gl",pullups:"gu",plank:"gpl",crunches:"gc",legraises:"glr"};const dailyGoals=Object.fromEntries(K.map(e=>[e,+$(ids[e]).value||0]));w(()=>db.doc("config/dailyGoals").set({dailyGoals}))}
+function syncExerciseInput(){const plank=$("le").value==="plank";$("lr-label").textContent=plank?"Minuti":"Ripetizioni";$("lr").min=plank?"0.1":"1";$("lr").step=plank?"0.1":"1"}
 $("tabs").onclick=e=>{const t=e.target.dataset.t;if(!t)return;["dash","log","ppl","his"].forEach(s=>$(s).style.display=s===t?"block":"none");[...$("tabs").children].forEach(b=>b.classList.toggle("on",b===e.target))};
-$("ld").value=ds(today);render();
+$("ld").value=ds(today);$("le").onchange=syncExerciseInput;syncExerciseInput();render();
 const err=e=>{console.error(e);note("Errore dati: "+(e.message||e.code||e));};
-db.doc("config/goals").onSnapshot(s=>{if(s.exists)Object.assign(S.goals,s.data());render()},err);
-db.collection("people").orderBy("ts","asc").onSnapshot(q=>{S.people=q.docs.map(d=>({id:d.id,name:d.data().name||"?",goals:d.data().goals||{}}));render()},err);
+db.doc("config/dailyGoals").onSnapshot(s=>{if(s.exists)S.dailyGoals={...DEFAULT_DAILY_GOALS,...(s.data().dailyGoals||{})};render()},err);
+db.collection("people").orderBy("ts","asc").onSnapshot(q=>{S.people=q.docs.map(d=>({id:d.id,name:d.data().name||"?"}));render()},err);
 db.collection("logs").orderBy("ts","desc").limit(1000).onSnapshot(q=>{S.logs=q.docs.map(d=>({id:d.id,...d.data()}));render()},err);
 </script>
 </body>
