@@ -21,7 +21,7 @@ form{display:grid;grid-template-columns:repeat(4,1fr) auto;gap:10px;align-items:
 input,select{width:100%;padding:10px;border:1px solid var(--line);border-radius:10px;background:var(--card);color:var(--fg)}
 .scroll{overflow-x:auto}table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:9px;border-bottom:1px solid var(--line);font-size:14px}.r{text-align:right}
 .note{padding:10px 12px;border-radius:10px;background:var(--soft);font-size:13px;margin:8px 0}.mn{display:flex;align-items:center;gap:10px;margin-bottom:12px}.mn h2{margin:0;flex:1}
-.goal-form{grid-template-columns:repeat(4,minmax(0,1fr))}.person-goal-period{grid-column:1/-1}.person-form{grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto}
+.goal-form{grid-template-columns:repeat(4,minmax(0,1fr))}.person-goal-period{grid-column:1/-1}.person-form{grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto}.goals-description{margin:14px 0 8px}
 @media(max-width:760px){.grid,.stats{grid-template-columns:1fr}form{grid-template-columns:1fr 1fr}.goal-form{grid-template-columns:repeat(2,minmax(0,1fr))}.person-form{grid-template-columns:1fr 1fr}.person-form button{grid-column:1/-1}.wrap{padding:14px}}
 </style>
 </head>
@@ -54,8 +54,8 @@ input,select{width:100%;padding:10px;border:1px solid var(--line);border-radius:
 <div class="card"><h2>Aggiungi persona</h2><form class="person-form" onsubmit="addPerson(event)">
 <div><label>Nome</label><input id="pn" required placeholder="es. Bennina"></div>
 <div><label for="pp">Obiettivi per</label><select id="pp"><option value="daily">Giorno</option><option value="weekly">Settimana</option></select></div>
-<button>+ Aggiungi</button></form></div>
-<div class="card"><h2>Obiettivi giornalieri predefiniti</h2><div class="muted">Valgono per i nuovi partecipanti e per chi non ha obiettivi personalizzati.</div><form id="goals-form" class="goal-form" onsubmit="saveGoals(event)">
+<button>+ Aggiungi</button></form>
+<div class="muted goals-description">Valgono per i nuovi partecipanti e per chi non ha obiettivi personalizzati.</div><form id="goals-form" class="goal-form" onsubmit="saveGoals(event)">
 <div><label>Flessioni / giorno / persona</label><input id="gp" type="number" min="0" step="1"></div>
 <div><label>Squat / giorno / persona</label><input id="gs" type="number" min="0" step="1"></div>
 <div><label>Lunges / giorno / persona</label><input id="gl" type="number" min="0" step="1"></div>
