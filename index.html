@@ -21,8 +21,8 @@ form{display:grid;grid-template-columns:repeat(4,1fr) auto;gap:10px;align-items:
 input,select{width:100%;padding:10px;border:1px solid var(--line);border-radius:10px;background:var(--card);color:var(--fg)}
 .scroll{overflow-x:auto}table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:9px;border-bottom:1px solid var(--line);font-size:14px}.r{text-align:right}
 .note{padding:10px 12px;border-radius:10px;background:var(--soft);font-size:13px;margin:8px 0}.mn{display:flex;align-items:center;gap:10px;margin-bottom:12px}.mn h2{margin:0;flex:1}
-.goal-form{grid-template-columns:repeat(4,minmax(0,1fr))}.person-goal-period{grid-column:1/-1}.person-form{grid-template-columns:minmax(0,1fr) auto}
-@media(max-width:760px){.grid,.stats{grid-template-columns:1fr}form{grid-template-columns:1fr 1fr}.goal-form{grid-template-columns:repeat(2,minmax(0,1fr))}.person-form{grid-template-columns:1fr auto}.wrap{padding:14px}}
+.goal-form{grid-template-columns:repeat(4,minmax(0,1fr))}.person-goal-period{grid-column:1/-1}.person-form{grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto}
+@media(max-width:760px){.grid,.stats{grid-template-columns:1fr}form{grid-template-columns:1fr 1fr}.goal-form{grid-template-columns:repeat(2,minmax(0,1fr))}.person-form{grid-template-columns:1fr 1fr}.person-form button{grid-column:1/-1}.wrap{padding:14px}}
 </style>
 </head>
 <body>
@@ -52,7 +52,8 @@ input,select{width:100%;padding:10px;border:1px solid var(--line);border-radius:
 
 <section id="ppl" style="display:none">
 <div class="card"><h2>Aggiungi persona</h2><form class="person-form" onsubmit="addPerson(event)">
-<div><label>Nome</label><input id="pn" required placeholder="es. Luca"></div>
+<div><label>Nome</label><input id="pn" required placeholder="es. Bennina"></div>
+<div><label for="pp">Obiettivi per</label><select id="pp"><option value="daily">Giorno</option><option value="weekly">Settimana</option></select></div>
 <button>+ Aggiungi</button></form></div>
 <div class="card"><h2>Obiettivi giornalieri predefiniti</h2><div class="muted">Valgono per i nuovi partecipanti e per chi non ha obiettivi personalizzati.</div><form id="goals-form" class="goal-form" onsubmit="saveGoals(event)">
 <div><label>Flessioni / giorno / persona</label><input id="gp" type="number" min="0" step="1"></div>
@@ -133,7 +134,7 @@ async function w(fn){if(!db){note("Database non disponibile.");return}
 function addLog(ev){ev.preventDefault();if(!$("lp").value){note("Aggiungi prima almeno una persona.");return}
  w(async()=>{await db.collection("logs").add({personId:$("lp").value,exercise:$("le").value,reps:+$("lr").value,date:$("ld").value,ts:Date.now()});$("lr").value=""})}
 function delLog(id){w(()=>db.doc("logs/"+id).delete())}
-function addPerson(ev){ev.preventDefault();w(async()=>{await db.collection("people").add({name:$("pn").value.trim(),ts:Date.now()});$("pn").value=""})}
+function addPerson(ev){ev.preventDefault();w(async()=>{await db.collection("people").add({name:$("pn").value.trim(),goalPeriod:$("pp").value,ts:Date.now()});$("pn").value="";$("pp").value="daily"})}
 function delPerson(id){if(confirm("Rimuovere questa persona? Gli inserimenti restano nello storico."))w(()=>db.doc("people/"+id).delete())}
 function saveGoals(ev){ev.preventDefault();const ids={pushups:"gp",squats:"gs",lunges:"gl",pullups:"gu",plank:"gpl",crunches:"gc",legraises:"glr"};const dailyGoals=Object.fromEntries(K.map(e=>[e,+$(ids[e]).value||0]));w(()=>db.doc("config/dailyGoals").set({dailyGoals}))}
 function savePersonGoals(ev){ev.preventDefault();const form=ev.currentTarget,id=form.dataset.personId,goals=Object.fromEntries(K.map(e=>[e,+form.querySelector(`[data-exercise="${e}"]`).value||0])),goalPeriod=form.querySelector(".person-goal-period select").value;w(async()=>{await db.doc("people/"+id).update({goals,goalPeriod});form.querySelector(":focus")?.blur();renderPersonGoals()})}
