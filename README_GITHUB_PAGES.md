@@ -35,11 +35,12 @@ Nel repository GitHub:
 
 Dopo la pubblicazione, GitHub mostrerà l'indirizzo del sito.
 
-## 5. Funzioni già presenti
+## 5. Funzioni disponibili
 
-- Piegamenti, squat e trazioni.
-- Obiettivi mensili di gruppo.
-- Obiettivi individuali.
+- Flessioni, squat, lunges, pull up/chin up, plank, crunches e leg raises.
+- Obiettivi giornalieri per persona modificabili nella scheda “Persone & obiettivi”.
+- Target mensili calcolati automaticamente come obiettivo giornaliero × partecipanti × giorni del mese.
+- Il plank viene registrato e conteggiato in minuti; gli altri esercizi in ripetizioni.
 - Inserimento attività con data scelta manualmente, anche retroattiva.
 - Storico condiviso.
 - Dashboard mensile.
