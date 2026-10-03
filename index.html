@@ -21,7 +21,7 @@ form{display:grid;grid-template-columns:repeat(4,1fr) auto;gap:10px;align-items:
 input,select{width:100%;padding:10px;border:1px solid var(--line);border-radius:10px;background:var(--card);color:var(--fg)}
 .scroll{overflow-x:auto}table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:9px;border-bottom:1px solid var(--line);font-size:14px}.r{text-align:right}
 .note{padding:10px 12px;border-radius:10px;background:var(--soft);font-size:13px;margin:8px 0}.mn{display:flex;align-items:center;gap:10px;margin-bottom:12px}.mn h2{margin:0;flex:1}
-.goal-form{grid-template-columns:repeat(4,minmax(0,1fr))}.person-form{grid-template-columns:minmax(0,1fr) auto}
+.goal-form{grid-template-columns:repeat(4,minmax(0,1fr))}.person-goal-period{grid-column:1/-1}.person-form{grid-template-columns:minmax(0,1fr) auto}
 @media(max-width:760px){.grid,.stats{grid-template-columns:1fr}form{grid-template-columns:1fr 1fr}.goal-form{grid-template-columns:repeat(2,minmax(0,1fr))}.person-form{grid-template-columns:1fr auto}.wrap{padding:14px}}
 </style>
 </head>
@@ -94,26 +94,29 @@ const n=x=>(+x||0).toLocaleString("it-IT"),pct=(a,b)=>b?Math.min(100,a/b*100):0;
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const quantity=(e,v)=>n(v)+(e==="plank"?" min":"");
 const monthDays=()=>{const[y,m]=vm.split("-").map(Number);return new Date(y,m,0).getDate()};
-const personDailyGoal=(p,e)=>+(p.dailyGoals?.[e]??S.dailyGoals[e])||0;
-const groupTarget=e=>S.people.reduce((total,p)=>total+personDailyGoal(p,e),0)*monthDays();
+const personGoalPeriod=p=>p.goalPeriod==="weekly"?"weekly":"daily";
+const personGoal=(p,e)=>+(p.goals?.[e]??p.dailyGoals?.[e]??S.dailyGoals[e])||0;
+const personWeeklyTarget=(p,e)=>personGoal(p,e)*(personGoalPeriod(p)==="daily"?7:1);
+const personMonthlyTarget=(p,e)=>personGoal(p,e)*(personGoalPeriod(p)==="daily"?monthDays():monthDays()/7);
+const groupTarget=e=>S.people.reduce((total,p)=>total+personMonthlyTarget(p,e),0);
 function note(t){const m=$("msg");m.textContent=t;m.style.display=t?"block":"none"}
 function shift(k){const[y,m]=vm.split("-").map(Number),d=new Date(y,m-1+k,1);vm=ds(d).slice(0,7);render()}
 const inM=()=>S.logs.filter(l=>l.date.slice(0,7)===vm);
 const tot=(e,pid)=>inM().filter(l=>l.exercise===e&&(!pid||l.personId===pid)).reduce((a,l)=>a+l.reps,0);
 function weekRange(){const d=new Date(today.getFullYear(),today.getMonth(),today.getDate()),w=(d.getDay()+6)%7;const a=new Date(d);a.setDate(d.getDate()-w);const b=new Date(a);b.setDate(a.getDate()+6);return[ds(a),ds(b)]}
 function wtot(e,pid){const[a,b]=weekRange();return S.logs.filter(l=>l.exercise===e&&l.date>=a&&l.date<=b&&(!pid||l.personId===pid)).reduce((x,l)=>x+l.reps,0)}
-function wtarget(dailyGoal){return Math.ceil(dailyGoal*7)}
 function row(e,v,g,extra){const p=pct(v,g);return `<div class="muted">${EX[e]}</div><div><b>${quantity(e,v)}</b> / ${quantity(e,g)}</div><div class="bar"><div class="fill ${p>=100?"done":""}" style="width:${p}%"></div></div>${extra||""}`}
 function renderPersonGoals(){
- $("person-goals").innerHTML=S.people.map(p=>`<form class="goal-form person-goal-form" data-person-id="${esc(p.id)}" onsubmit="savePersonGoals(event)"><h3>${esc(p.name)}</h3>${K.map(e=>`<div><label>${EX[e]}${e==="plank"?" (minuti)":""} / giorno</label><input type="number" min="0" step="${e==="plank"?"0.1":"1"}" data-exercise="${e}" value="${personDailyGoal(p,e)}"></div>`).join("")}<button>Salva obiettivi</button></form>`).join("")||'<div class="muted">Aggiungi una persona per personalizzare i suoi obiettivi.</div>';
+ $("person-goals").innerHTML=S.people.map(p=>`<form class="goal-form person-goal-form" data-person-id="${esc(p.id)}" onsubmit="savePersonGoals(event)"><h3>${esc(p.name)}</h3><div class="person-goal-period"><label>Obiettivo per</label><select onchange="updatePersonGoalPeriod(this)"><option value="daily"${personGoalPeriod(p)==="daily"?" selected":""}>Giorno</option><option value="weekly"${personGoalPeriod(p)==="weekly"?" selected":""}>Settimana</option></select></div>${K.map(e=>`<div><label data-goal-label="${e}">${EX[e]}${e==="plank"?" (minuti)":""} / ${personGoalPeriod(p)==="daily"?"giorno":"settimana"}</label><input type="number" min="0" step="${e==="plank"?"0.1":"1"}" data-exercise="${e}" value="${personGoal(p,e)}"></div>`).join("")}<button>Salva obiettivi</button></form>`).join("")||'<div class="muted">Aggiungi una persona per personalizzare i suoi obiettivi.</div>';
 }
+function updatePersonGoalPeriod(select){const period=select.value==="weekly"?"settimana":"giorno";select.closest("form").querySelectorAll("[data-goal-label]").forEach(label=>{const e=label.dataset.goalLabel;label.textContent=EX[e]+(e==="plank"?" (minuti)":"")+" / "+period})}
 function render(){
  const[y,m]=vm.split("-").map(Number);
  $("mt").textContent="Obiettivi di "+new Date(y,m-1,1).toLocaleDateString("it-IT",{month:"long",year:"numeric"});
  $("gs").innerHTML=K.map(e=>{const t=tot(e),g=groupTarget(e);return `<div class="ex"><h3>${EX[e]}</h3><div class="big">${quantity(e,t)} / ${quantity(e,g)}</div><div class="bar"><div class="fill ${t>=g&&g>0?"done":""}" style="width:${pct(t,g)}%"></div></div><div class="muted">${pct(t,g).toFixed(0)}% · ${g>0&&t>=g?"obiettivo raggiunto 🎉":quantity(e,g-t)+" mancanti"}</div></div>`}).join("");
  const cur=vm===ds(today).slice(0,7);$("wkc").style.display=cur?"block":"none";
- if(cur)$("ws").innerHTML=K.map(e=>{const t=wtot(e),g=S.people.reduce((total,p)=>total+personDailyGoal(p,e),0)*7;return `<div class="ex"><h3>${EX[e]}</h3><div class="big">${quantity(e,t)} / ${quantity(e,g)}</div><div class="bar"><div class="fill ${t>=g&&g>0?"done":""}" style="width:${pct(t,g)}%"></div></div><div class="muted">target settimanale di gruppo</div></div>`}).join("");
- $("pc").innerHTML=S.people.map(p=>`<div class="ex"><h3>${esc(p.name)}</h3>${K.map(e=>{const daily=personDailyGoal(p,e);return row(e,tot(e,p.id),daily*monthDays(),cur&&daily?`<div class="muted">settimana: ${quantity(e,wtot(e,p.id))} / ${quantity(e,wtarget(daily))}</div>`:"")}).join("")}</div>`).join("")||'<div class="muted">Aggiungi i partecipanti nella scheda "Persone &amp; obiettivi".</div>';
+ if(cur)$("ws").innerHTML=K.map(e=>{const t=wtot(e),g=S.people.reduce((total,p)=>total+personWeeklyTarget(p,e),0);return `<div class="ex"><h3>${EX[e]}</h3><div class="big">${quantity(e,t)} / ${quantity(e,g)}</div><div class="bar"><div class="fill ${t>=g&&g>0?"done":""}" style="width:${pct(t,g)}%"></div></div><div class="muted">target settimanale di gruppo</div></div>`}).join("");
+ $("pc").innerHTML=S.people.map(p=>`<div class="ex"><h3>${esc(p.name)}</h3>${K.map(e=>{const goal=personGoal(p,e);return row(e,tot(e,p.id),personMonthlyTarget(p,e),cur&&goal?`<div class="muted">settimana: ${quantity(e,wtot(e,p.id))} / ${quantity(e,personWeeklyTarget(p,e))}</div>`:"")}).join("")}</div>`).join("")||'<div class="muted">Aggiungi i partecipanti nella scheda "Persone &amp; obiettivi".</div>';
  const sel=$("lp").value;$("lp").innerHTML=S.people.map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join("");if(sel)$("lp").value=sel;
  const nm=id=>esc(S.people.find(p=>p.id===id)?.name||"Rimosso");
  const rm=l=>canWrite?`<button class="sec" onclick="delLog('${l.id}')">✕</button>`:"";
@@ -121,7 +124,7 @@ function render(){
  $("pt").innerHTML=`<table><tr><th>Persona</th><th></th></tr>${S.people.map(p=>`<tr><td>${esc(p.name)}</td><td class="r">${canWrite?`<button class="sec" onclick="delPerson('${p.id}')">Rimuovi</button>`:""}</td></tr>`).join("")}</table>`;
  if(!$("goals-form").contains(document.activeElement)){const ids={pushups:"gp",squats:"gs",lunges:"gl",pullups:"gu",plank:"gpl",crunches:"gc",legraises:"glr"};K.forEach(e=>$(ids[e]).value=S.dailyGoals[e])}
  if(!$("person-goals").contains(document.activeElement))renderPersonGoals();
- $("goal-summary").textContent=`${S.people.length} ${S.people.length===1?"persona":"persone"} · obiettivi giornalieri personalizzati × ${monthDays()} giorni (${new Date(y,m-1,1).toLocaleDateString("it-IT",{month:"long"})})`;
+ $("goal-summary").textContent=`${S.people.length} ${S.people.length===1?"persona":"persone"} · obiettivi individuali giornalieri o settimanali (${new Date(y,m-1,1).toLocaleDateString("it-IT",{month:"long"})})`;
  $("goal-preview").innerHTML=K.map(e=>`<div>${EX[e]}: ${quantity(e,groupTarget(e))}</div>`).join("");
  $("ht").innerHTML=`<table><tr><th>Data</th><th>Persona</th><th>Esercizio</th><th class="r">Quantità</th></tr>${S.logs.map(l=>`<tr><td>${new Date(l.date+"T12:00:00").toLocaleDateString("it-IT")}</td><td>${nm(l.personId)}</td><td>${EX[l.exercise]}</td><td class="r">${quantity(l.exercise,l.reps)}</td></tr>`).join("")||"<tr><td colspan='4'>Nessun dato</td></tr>"}</table>`;
 }
@@ -133,13 +136,13 @@ function delLog(id){w(()=>db.doc("logs/"+id).delete())}
 function addPerson(ev){ev.preventDefault();w(async()=>{await db.collection("people").add({name:$("pn").value.trim(),ts:Date.now()});$("pn").value=""})}
 function delPerson(id){if(confirm("Rimuovere questa persona? Gli inserimenti restano nello storico."))w(()=>db.doc("people/"+id).delete())}
 function saveGoals(ev){ev.preventDefault();const ids={pushups:"gp",squats:"gs",lunges:"gl",pullups:"gu",plank:"gpl",crunches:"gc",legraises:"glr"};const dailyGoals=Object.fromEntries(K.map(e=>[e,+$(ids[e]).value||0]));w(()=>db.doc("config/dailyGoals").set({dailyGoals}))}
-function savePersonGoals(ev){ev.preventDefault();const form=ev.currentTarget,id=form.dataset.personId,dailyGoals=Object.fromEntries(K.map(e=>[e,+form.querySelector(`[data-exercise="${e}"]`).value||0]));w(async()=>{await db.doc("people/"+id).update({dailyGoals});form.querySelector(":focus")?.blur();renderPersonGoals()})}
+function savePersonGoals(ev){ev.preventDefault();const form=ev.currentTarget,id=form.dataset.personId,goals=Object.fromEntries(K.map(e=>[e,+form.querySelector(`[data-exercise="${e}"]`).value||0])),goalPeriod=form.querySelector(".person-goal-period select").value;w(async()=>{await db.doc("people/"+id).update({goals,goalPeriod});form.querySelector(":focus")?.blur();renderPersonGoals()})}
 function syncExerciseInput(){const plank=$("le").value==="plank";$("lr-label").textContent=plank?"Minuti":"Ripetizioni";$("lr").min=plank?"0.1":"1";$("lr").step=plank?"0.1":"1"}
 $("tabs").onclick=e=>{const t=e.target.dataset.t;if(!t)return;["dash","log","ppl","his"].forEach(s=>$(s).style.display=s===t?"block":"none");[...$("tabs").children].forEach(b=>b.classList.toggle("on",b===e.target))};
 $("ld").value=ds(today);$("le").onchange=syncExerciseInput;syncExerciseInput();render();
 const err=e=>{console.error(e);note("Errore dati: "+(e.message||e.code||e));};
 db.doc("config/dailyGoals").onSnapshot(s=>{if(s.exists)S.dailyGoals={...DEFAULT_DAILY_GOALS,...(s.data().dailyGoals||{})};render()},err);
-db.collection("people").orderBy("ts","asc").onSnapshot(q=>{S.people=q.docs.map(d=>({id:d.id,name:d.data().name||"?",dailyGoals:d.data().dailyGoals||{}}));render()},err);
+db.collection("people").orderBy("ts","asc").onSnapshot(q=>{S.people=q.docs.map(d=>({id:d.id,name:d.data().name||"?",goals:d.data().goals||{},dailyGoals:d.data().dailyGoals||{},goalPeriod:d.data().goalPeriod||"daily"}));render()},err);
 db.collection("logs").orderBy("ts","desc").limit(1000).onSnapshot(q=>{S.logs=q.docs.map(d=>({id:d.id,...d.data()}));render()},err);
 </script>
 </body>
