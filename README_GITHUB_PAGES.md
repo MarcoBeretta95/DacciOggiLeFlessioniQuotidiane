@@ -39,7 +39,7 @@ Dopo la pubblicazione, GitHub mostrerà l'indirizzo del sito.
 
 - Flessioni, squat, lunges, pull up/chin up, plank, crunches e leg raises.
 - Obiettivi giornalieri predefiniti e scelta della cadenza giornaliera o settimanale già quando si aggiunge una persona; gli obiettivi si possono personalizzare nella scheda “Persone & obiettivi” e i target mensili e settimanali si aggiornano in base agli obiettivi correnti.
-- Target mensili calcolati automaticamente in base agli obiettivi individuali giornalieri o settimanali.
+- Target mensili e settimanali riproporzionati in base alla data di ingresso del partecipante e agli obiettivi individuali giornalieri o settimanali.
 - Il plank viene registrato e conteggiato in minuti; gli altri esercizi in ripetizioni.
 - Inserimento attività con data scelta manualmente, anche retroattiva.
 - Storico condiviso.

@@ -95,10 +95,11 @@ const n=x=>(+x||0).toLocaleString("it-IT"),pct=(a,b)=>b?Math.min(100,a/b*100):0;
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const quantity=(e,v)=>n(v)+(e==="plank"?" min":"");
 const monthDays=()=>{const[y,m]=vm.split("-").map(Number);return new Date(y,m,0).getDate()};
+const periodDays=(p,start,end)=>{const joined=p.joinedAt,from=joined&&joined>start?joined:start;if(joined&&joined>end)return 0;const day=s=>{const[y,m,d]=s.split("-").map(Number);return Date.UTC(y,m-1,d)/86400000};return Math.max(0,day(end)-day(from)+1)};
 const personGoalPeriod=p=>p.goalPeriod==="weekly"?"weekly":"daily";
 const personGoal=(p,e)=>+(p.goals?.[e]??p.dailyGoals?.[e]??S.dailyGoals[e])||0;
-const personWeeklyTarget=(p,e)=>personGoal(p,e)*(personGoalPeriod(p)==="daily"?7:1);
-const personMonthlyTarget=(p,e)=>personGoal(p,e)*(personGoalPeriod(p)==="daily"?monthDays():monthDays()/7);
+const personWeeklyTarget=(p,e)=>{const[a,b]=weekRange(),days=periodDays(p,a,b);return personGoal(p,e)*(personGoalPeriod(p)==="daily"?days:days/7)};
+const personMonthlyTarget=(p,e)=>{const start=vm+"-01",end=vm+"-"+String(monthDays()).padStart(2,"0"),days=periodDays(p,start,end);return personGoal(p,e)*(personGoalPeriod(p)==="daily"?days:days/7)};
 const groupTarget=e=>S.people.reduce((total,p)=>total+personMonthlyTarget(p,e),0);
 function note(t){const m=$("msg");m.textContent=t;m.style.display=t?"block":"none"}
 function shift(k){const[y,m]=vm.split("-").map(Number),d=new Date(y,m-1+k,1);vm=ds(d).slice(0,7);render()}
@@ -134,7 +135,7 @@ async function w(fn){if(!db){note("Database non disponibile.");return}
 function addLog(ev){ev.preventDefault();if(!$("lp").value){note("Aggiungi prima almeno una persona.");return}
  w(async()=>{await db.collection("logs").add({personId:$("lp").value,exercise:$("le").value,reps:+$("lr").value,date:$("ld").value,ts:Date.now()});$("lr").value=""})}
 function delLog(id){w(()=>db.doc("logs/"+id).delete())}
-function addPerson(ev){ev.preventDefault();w(async()=>{await db.collection("people").add({name:$("pn").value.trim(),goalPeriod:$("pp").value,ts:Date.now()});$("pn").value="";$("pp").value="daily"})}
+function addPerson(ev){ev.preventDefault();w(async()=>{await db.collection("people").add({name:$("pn").value.trim(),goalPeriod:$("pp").value,joinedAt:ds(new Date()),ts:Date.now()});$("pn").value="";$("pp").value="daily"})}
 function delPerson(id){if(confirm("Rimuovere questa persona? Gli inserimenti restano nello storico."))w(()=>db.doc("people/"+id).delete())}
 function saveGoals(ev){ev.preventDefault();const ids={pushups:"gp",squats:"gs",lunges:"gl",pullups:"gu",plank:"gpl",crunches:"gc",legraises:"glr"};const dailyGoals=Object.fromEntries(K.map(e=>[e,+$(ids[e]).value||0]));w(()=>db.doc("config/dailyGoals").set({dailyGoals}))}
 function savePersonGoals(ev){ev.preventDefault();const form=ev.currentTarget,id=form.dataset.personId,goals=Object.fromEntries(K.map(e=>[e,+form.querySelector(`[data-exercise="${e}"]`).value||0])),goalPeriod=form.querySelector(".person-goal-period select").value;w(async()=>{await db.doc("people/"+id).update({goals,goalPeriod});form.querySelector(":focus")?.blur();renderPersonGoals()})}
@@ -143,7 +144,7 @@ $("tabs").onclick=e=>{const t=e.target.dataset.t;if(!t)return;["dash","log","ppl
 $("ld").value=ds(today);$("le").onchange=syncExerciseInput;syncExerciseInput();render();
 const err=e=>{console.error(e);note("Errore dati: "+(e.message||e.code||e));};
 db.doc("config/dailyGoals").onSnapshot(s=>{if(s.exists)S.dailyGoals={...DEFAULT_DAILY_GOALS,...(s.data().dailyGoals||{})};render()},err);
-db.collection("people").orderBy("ts","asc").onSnapshot(q=>{S.people=q.docs.map(d=>({id:d.id,name:d.data().name||"?",goals:d.data().goals||{},dailyGoals:d.data().dailyGoals||{},goalPeriod:d.data().goalPeriod||"daily"}));render()},err);
+db.collection("people").orderBy("ts","asc").onSnapshot(q=>{S.people=q.docs.map(d=>({id:d.id,name:d.data().name||"?",goals:d.data().goals||{},dailyGoals:d.data().dailyGoals||{},goalPeriod:d.data().goalPeriod||"daily",joinedAt:d.data().joinedAt||(d.data().ts?ds(new Date(d.data().ts)):null)}));render()},err);
 db.collection("logs").orderBy("ts","desc").limit(1000).onSnapshot(q=>{S.logs=q.docs.map(d=>({id:d.id,...d.data()}));render()},err);
 </script>
 </body>
